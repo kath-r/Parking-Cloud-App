@@ -1,18 +1,53 @@
-# Salesforce DX Project: Next Steps
+Task name: 
+CSV to SF (Parking Cloud App)
 
-Now that you’ve created a Salesforce DX project, what’s next? Here are some documentation resources to get you started.
+Task description:
+It is necessary to develop an application that will download, store and display data about the status of parking space occupancy sensors. The application should also determine the current status for the sensors depending on the status of its base station. Sensor data should be downloaded manually in csv format.
 
-## How Do You Plan to Deploy Your Changes?
 
-Do you want to deploy a set of changes, or create a self-contained application? Choose a [development model](https://developer.salesforce.com/tools/vscode/en/user-guide/development-models).
+Data model:
+Create next  “Custom objects”:
+1. Sensor__с
+fields:
+Name(Auto num)
+Base Station
+Status (Picklist: Active, Inactive), 
+Sensor model (text).
 
-## Configure Your Salesforce DX Project
 
-The `sfdx-project.json` file contains useful configuration information for your project. See [Salesforce DX Project Configuration](https://developer.salesforce.com/docs/atlas.en-us.sfdx_dev.meta/sfdx_dev/sfdx_dev_ws_config.htm) in the _Salesforce DX Developer Guide_ for details about this file.
+2. Base Station__с
+fields:
+Name
+Status (Picklist: Active, Inactive, Broken)
 
-## Read All About It
+3. You should prepare test data for at least 50 records for Sensors and 5 Base Stations (CSV file).
 
-- [Salesforce Extensions Documentation](https://developer.salesforce.com/tools/vscode/)
-- [Salesforce CLI Setup Guide](https://developer.salesforce.com/docs/atlas.en-us.sfdx_setup.meta/sfdx_setup/sfdx_setup_intro.htm)
-- [Salesforce DX Developer Guide](https://developer.salesforce.com/docs/atlas.en-us.sfdx_dev.meta/sfdx_dev/sfdx_dev_intro.htm)
-- [Salesforce CLI Command Reference](https://developer.salesforce.com/docs/atlas.en-us.sfdx_cli_reference.meta/sfdx_cli_reference/cli_reference.htm)
+
+P.s. Use your creativity and craziest ideas for naming :)
+
+
+
+A component that displays the status of the sensors:
+1. Develop LWC, where you’ll have button to upload CSV file с ','(comma) as separator. (https://en.wikipedia.org/wiki/Comma-separated_values) or (https://tools.ietf.org/html/rfc4180)
+File should contain data about parking sensors.
+After file upload, data should be inserted in database and displayed in a table (Columns : Sensor Model, Status, Base Station.Name). 
+
+2. Users should have the ability to delete records from table (and database as well). 
+
+3. Add pagination functionality to the table with ability to switch on first/last pages and go to next/previous page. User should also have the ability to select the number of records per page(10,25,50,100,200). 
+Default number of records per page should be stored in Custom Settings or Custom Metadata Types
+
+Automatization:
+1. Sensor can be only related to Base Station with Active, Inactive status. 
+If Base Station status is set to 
+Inactive -> all sensors related to this Station should be set to Inactive
+Broken -> sensors should be unassigned and set to Inactive
+Sensors without Base Station should be only in Inactive status. If Sensor is assigned to Base Station(Status = Active), Sensor Status should be set to Active (use process builder/flow).
+
+
+Necessary to use:
+1) Custom Object with relationships: Base_Station__c, Sensor__c
+2) SOQL queries
+3) Unit-test coverage: at least 80%
+4) Pagination
+5) Custom Settings or Custom Metadata Types
