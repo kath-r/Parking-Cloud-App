@@ -1,5 +1,29 @@
-.slds-m-around_medium {
-    margin: 1rem;
+/* sensorTable.css */
+
+/* Styling the lightning-select component */
+.select {
+    margin-bottom: 1rem;
+}
+
+/* Styling the lightning-datatable component */
+.datatable {
+    margin-bottom: 1rem;
+}
+
+/* Centering the pagination layout */
+.pagination-layout {
+    justify-content: center;
     align-items: center;
-    background-color: aqua;
+    margin-top: 1rem;
+}
+
+/* Adding some space between pagination buttons */
+.pagination-layout lightning-layout-item lightning-button {
+    margin: 0 0.5rem;
+}
+
+/* Styling the page information */
+.pagination-layout lightning-layout-item span {
+    font-weight: bold;
+    margin: 0 1rem;
 }

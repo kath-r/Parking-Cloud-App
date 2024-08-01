@@ -1,37 +1,49 @@
 <template>
-    <lightning-card>
-        <div class="slds-m-around_medium">
-            <lightning-combobox
-                name="pageSize"
-                label="Records per page"
-                value={pageSize}
-                options={options)
-                onchange={handlePageSizeChange}>
-            </lightning-combobox>
-        </div>
+    <template if:true={sensors}>  
+        <lightning-select
+                name="tickets"
+                label="Records per Page:"
+                value={value}
+                options={options}
+                onchange={handleChange}>
+        </lightning-select>
+
         <lightning-datatable
+            key-field="Id"
             data={sensors}
             columns={columns}
-            key-field="id">
+            onrowaction={handleRowAction}
+            hide-checkbox-column="true">
         </lightning-datatable>
-        <div class="slds-m-around_medium">
-            <lightning-button
-            label="First"
-            onclick={handleFirstPage}>
-            <lightning-button
-            label="Previous"
-            onclick={handlePreviousPage}>
-        </lightning-button>
-        <span>{currentPage} of {totalPages}</span>
-        </lightning-button>
-        <lightning-button
-            label="Next"
-            onclick={handleNextPage}>
-        </lightning-button>
-        <lightning-button
-            label="Last"
-            onclick={handleLastPage}>
-        </lightning-button>
-        </div>
-    </lightning-card>
+
+        <lightning-layout class="pagination-layout">
+            <lightning-layout-item>
+                <lightning-button
+                    label="First"
+                    onclick={handleFirstPage}>
+                </lightning-button>
+            </lightning-layout-item>
+            <lightning-layout-item>
+                <lightning-button
+                    label="Previous"
+                    onclick={handlePreviousPage}>
+                </lightning-button>
+            </lightning-layout-item>
+            <lightning-layout-item>
+                <span> Page {currentPage} of {totalPages} </span>
+            </lightning-layout-item>
+            <lightning-layout-item>
+                <lightning-button
+                    label="Next"
+                    onclick={handleNextPage}>
+                </lightning-button>
+            </lightning-layout-item>
+            <lightning-layout-item>
+                <lightning-button
+                    label="Last"
+                    onclick={handleLastPage}>
+                </lightning-button>
+            </lightning-layout-item>
+        </lightning-layout>
+    </template>
 </template>
