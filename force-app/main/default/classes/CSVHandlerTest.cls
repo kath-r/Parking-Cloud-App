@@ -1,72 +1,200 @@
-@isTest
-public with sharing class CSVHandlerTest {
-    @testSetup
-    static void setup() {
-        // create BS records for DB
-        List<Base_Station__c> testBaseStations = new List<Base_Station__c>();
-        Base_Station__c bs1 = new Base_Station__c(Name='BS1', Status__c='Active');
-        Base_Station__c bs2 = new Base_Station__c(Name='BS2', Status__c='Inactive');
-        
-        Base_Station__c existingBS = new Base_Station__c(Name='ExistingBS',Status__c='Active');
-        
-        testBaseStations.add(bs1);
-        testBaseStations.add(bs2);
-        testBaseStations.add(existingBS);
-        upsert testBaseStations;
+@IsTest
+private class CSVHandlerTest {
 
-        // create test contentDocument (like csv)
-        ContentVersion testContentVersion = new ContentVersion(
+    @IsTest
+    static void testParseCSVInsertData() {
+        // Setup test data
+        ContentVersion cv = new ContentVersion(
             Title = 'Test CSV',
-            VersionData = Blob.valueOf('model,status,bsName\nModel1,Active,BS1\nModel2,Inactive,BS2\nModel3,Active,BS3'),
-            PathOnClient = 'test.csv'
+            PathOnClient = 'test.csv',
+            VersionData = Blob.valueOf('model,status,bsName\nModel1,Active,BS1\nModel2,Inactive,BS2\nModel3,Active,BS3\nModel4,Inactive')
         );
-        insert testContentVersion;
+        insert cv;
+        ContentDocument ContentDocumentId = [SELECT Id FROM ContentDocument LIMIT 1];
+
+        Test.startTest();
+            CSVHandler.parseCSVInsertData(ContentDocumentId.Id);
+        Test.stopTest();
+
+        // Assert the results
+        List<Base_Station__c> baseStations = [SELECT Id, Name FROM Base_Station__c];
+        System.assertEquals(3, baseStations.size(), 'Base stations count mismatch.');
+
+        List<Sensor__c> sensors = [SELECT Id, Sensor_model__c, Status__c, Base_Station__c FROM Sensor__c];
+        System.assertEquals(4, sensors.size(), 'Sensors count mismatch.');
+    }
+
+    @IsTest
+    static void testGetCSVBody() {
+        // Setup test data
+        ContentVersion cv = new ContentVersion(
+            Title = 'Test CSV',
+            PathOnClient = 'test.csv',
+            VersionData = Blob.valueOf('model,status,bsName\nModel1,Active,BS1')
+        );
+        insert cv;
+
+        ContentDocument contentDoc = [SELECT Id FROM ContentDocument LIMIT 1];
+
+        // Test the getCSVBody method
+        String csvBody = CSVHandler.getCSVBody(contentDoc.Id);
+        System.assertNotEquals(null, csvBody, 'CSV body should not be null.');
+    }
+
+    @IsTest
+    static void testParseCSV() {
+        // Test data
+        String csvBody = 'model,status,bsName\nModel1,Active,BS1\nModel2,Inactive,BS2\nModel3,Active\nModel4,Inactive,BS4';
+        Map<String, List<CSVHandler.SensorInfo>> bsNameToSensorsMap = new Map<String, List<CSVHandler.SensorInfo>>();
+        List<CSVHandler.SensorInfo> sensorsWithoutBS = new List<CSVHandler.SensorInfo>();
+
+        // Test the parseCSV method
+        CSVHandler.parseCSV(csvBody, bsNameToSensorsMap, sensorsWithoutBS);
+
+        System.assertEquals(3, bsNameToSensorsMap.size(), 'Base stations count mismatch.');
+        System.assertEquals(1, sensorsWithoutBS.size(), 'Sensors without BS count mismatch.');
+    }
+
+    @IsTest
+    static void testInsertData() {
+        // Test data
+        Map<String, List<CSVHandler.SensorInfo>> bsNameToSensorsMap = new Map<String, List<CSVHandler.SensorInfo>>();
+        List<CSVHandler.SensorInfo> sensorsWithoutBS = new List<CSVHandler.SensorInfo>();
+
+        bsNameToSensorsMap.put('BS1', new List<CSVHandler.SensorInfo>{
+            new CSVHandler.SensorInfo('Model1', 'Active', 'BS1')
+        });
+
+        sensorsWithoutBS.add(new CSVHandler.SensorInfo('Model2', 'Inactive'));
+
+        Test.startTest();
+            CSVHandler.insertData(bsNameToSensorsMap, sensorsWithoutBS);
+        Test.stopTest();
+
+        // Assert the results
+        List<Base_Station__c> baseStations = [SELECT Id, Name FROM Base_Station__c];
+        System.assertEquals(1, baseStations.size(), 'Base stations count mismatch.');
+
+        List<Sensor__c> sensors = [SELECT Id, Sensor_model__c, Status__c, Base_Station__c FROM Sensor__c];
+        System.assertEquals(2, sensors.size(), 'Sensors count mismatch.');
+    }
+
+    @IsTest
+    static void testCollectNewBaseStations() {
+        // Test data
+        Map<String, List<CSVHandler.SensorInfo>> bsNameToSensorsMap = new Map<String, List<CSVHandler.SensorInfo>>();
+        bsNameToSensorsMap.put('BS1', new List<CSVHandler.SensorInfo>{
+            new CSVHandler.SensorInfo('Model1', 'Active', 'BS1')
+        });
+
+        // Test the collectNewBaseStations method
+        List<Base_Station__c> newBaseStations = CSVHandler.collectNewBaseStations(bsNameToSensorsMap);
+
+        System.assertEquals(1, newBaseStations.size(), 'New base stations count mismatch.');
+    }
+
+    @IsTest
+    static void testCollectAllBaseStationIds() {
+        // Setup test data
+        Base_Station__c bs1 = new Base_Station__c(Name = 'BS1', Status__c = 'Active');
+        insert bs1;
+
+        // Test the collectAllBaseStationIds method
+        Map<String, Id> bsNameToIdMap = CSVHandler.collectAllBaseStationIds();
+
+        System.assertEquals(1, bsNameToIdMap.size(), 'Base station IDs count mismatch.');
+        System.assertEquals(bs1.Id, bsNameToIdMap.get('BS1'), 'Base station ID mismatch.');
+    }
+
+    @IsTest
+    static void testCollectNewSensors() {
+        // Test data
+        Map<String, List<CSVHandler.SensorInfo>> bsNameToSensorsMap = new Map<String, List<CSVHandler.SensorInfo>>();
+        List<CSVHandler.SensorInfo> sensorsWithoutBS = new List<CSVHandler.SensorInfo>();
+
+        bsNameToSensorsMap.put('BS1', new List<CSVHandler.SensorInfo>{
+            new CSVHandler.SensorInfo('Model1', 'Active', 'BS1')
+        });
+
+        sensorsWithoutBS.add(new CSVHandler.SensorInfo('Model2', 'Inactive'));
+
+        // Setup base stations
+        Base_Station__c bs1 = new Base_Station__c(Name = 'BS1', Status__c = 'Active');
+        insert bs1;
+
+        Map<String, Id> bsNameToIdMap = CSVHandler.collectAllBaseStationIds();
+
+        // Test the collectNewSensors method
+        List<Sensor__c> newSensors = CSVHandler.collectNewSensors(bsNameToSensorsMap, sensorsWithoutBS, bsNameToIdMap);
+
+        System.assertEquals(2, newSensors.size(), 'New sensors count mismatch.');
+        System.assertEquals(bs1.Id, newSensors[0].Base_Station__c, 'Base station ID mismatch for sensor.');
+    }
+
+    @IsTest
+    static void testParseCSVInsertData_ParsingError() {
+        // Setup: Create a ContentVersion with invalid CSV data
+        ContentVersion cv = new ContentVersion(
+            Title = 'Test CSV',
+            PathOnClient = 'test.csv',
+            VersionData = Blob.valueOf('model,status,bsName\nModel1,Active,BS1\nInvalidRow\nModel3,Active')
+        );
+        insert cv;
+
+        ContentDocument newContentDocument = [SELECT Id FROM ContentDocument LIMIT 1];
+
+        Test.startTest();
+        Boolean exceptionThrown = false;
+        try {
+            CSVHandler.parseCSVInsertData(newContentDocument.Id);
+        } catch (CSVHandler.CustomException e) {
+            exceptionThrown = true;
+            System.assert(e.getMessage().contains('Error processing CSV file:'), 'Unexpected exception message: ' + e.getMessage());
+        }
+        Test.stopTest();
+
+        System.assert(exceptionThrown, 'Exception should have been thrown due to parsing error.');
     }
 
     @isTest
-    static void testParseCSVInsertData() {
-        ContentDocument testContentDocument = [SELECT ID FROM ContentDocument LIMIT 1];
-
+    static void testGenerateBaseStationData() {
         Test.startTest();
-            CSVHandler.parseCSVInsertData(testContentDocument.Id);
+            CSVHandler.generateBaseStationData();
         Test.stopTest();
 
-        List<Base_Station__c> insertedBS = [SELECT Name, Status__c FROM Base_Station__c WHERE Name IN ('BS1', 'BS2', 'BS3')];
-        System.assertEquals(3, insertedBS.size());
+        List<Base_Station__c> baseStations = [SELECT Id, Name, Status__c FROM Base_Station__c];
+        System.assertEquals(5, baseStations.size());
+        System.assertEquals('Block A', baseStations[0].Name);
+        System.assertEquals('Active', baseStations[0].Status__c);
+        System.assertEquals('Block B', baseStations[1].Name);
+        System.assertEquals('Inactive', baseStations[1].Status__c);
+        System.assertEquals('Block C', baseStations[2].Name);
+        System.assertEquals('Active', baseStations[2].Status__c);
+        System.assertEquals('Block D', baseStations[3].Name);
+        System.assertEquals('Inactive', baseStations[3].Status__c);
+        System.assertEquals('Block E', baseStations[4].Name);
+        System.assertEquals('Active', baseStations[4].Status__c);
 
-        Map<String, Base_Station__c> bsMap = new Map<String, Base_Station__c>();
-        for(Base_Station__c bs : insertedBS) {
-            bsMap.put(bs.Name, bs);
+        List<Sensor__c> sensors = [SELECT Id, Sensor_model__c, Base_Station__c FROM Sensor__c];
+        System.assertEquals(50, sensors.size());
+        for (Integer i = 0; i < sensors.size(); i++) {
+            System.assert(sensors[i].Sensor_model__c.startsWith('Model '));
+            System.assertNotEquals(null, sensors[i].Base_Station__c);
         }
-
-        System.assertEquals('Active', bsMap.get('BS1').Status__c);
-        System.assertEquals('Inactive', bsMap.get('BS2').Status__c);
-        System.assertEquals('Active', bsMap.get('BS3').Status__c);
-
-        // Verify Sensor__c records related to CSV
-        List<Sensor__c> sensors = [SELECT Sensor_model__c, Status__c, Base_Station__r.Name FROM Sensor__c WHERE Base_Station__r.Name IN ('BS1', 'BS2', 'BS3')];
-        System.assertEquals(3, sensors.size());
-        Map<String, Sensor__c> sensorMap = new Map<String, Sensor__c>();
-        for (Sensor__c sensor : sensors) {
-            sensorMap.put(sensor.Sensor_model__c + sensor.Base_Station__r.Name, sensor);
-        }
-        System.assertEquals('Active', sensorMap.get('Model1BS1').Status__c);
-        System.assertEquals('Inactive', sensorMap.get('Model2BS2').Status__c);
-        System.assertEquals('Active', sensorMap.get('Model3BS3').Status__c);
     }
 
-    /*@isTest
-    static void testParseCSVInsertDataNoContentVersion() {
+    @isTest
+    static void testDeleteAllData() {
+        CSVHandler.generateBaseStationData();
+
+        System.assertEquals(5, [SELECT COUNT() FROM Base_Station__c]);
+        System.assertEquals(50, [SELECT COUNT() FROM Sensor__c]);
+
         Test.startTest();
-        try {
-            CSVHandler.parseCSVInsertData(null);
-            System.assert(false, 'Exception should have been thrown for missing ContentVersion');
-        } catch (Exception e) {
-            system.debug('error' + e);
-            System.assert(e.getMessage().contains('System.AuraHandledException: Script-thrown exception'));
-            System.assert(e.getMessage().contains('Error parsing CSV and inserting data'));
-            System.assert(e.getMessage().contains('ContentVersion not found for ContentDocumentId'), 'Exception message should mention missing ContentVersion');
-        }
+            CSVHandler.deleteAllData();
         Test.stopTest();
-    }*/
+
+        System.assertEquals(0, [SELECT COUNT() FROM Base_Station__c]);
+        System.assertEquals(0, [SELECT COUNT() FROM Sensor__c]);
+    }
 }
