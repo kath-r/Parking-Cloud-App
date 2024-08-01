@@ -19,14 +19,6 @@
         <name>CustomField</name>
     </types>
     <types>
-        <members>Pagination_Settings__mdt</members>
-        <name>CustomMetadata</name>
-    </types>
-    <types>
-        <members>Pagination_Settings__mdt.*</members>
-        <name>CustomMetadata</name>
-    </types>
-    <types>
         <members>Pagination_Settings.Parking_App_Pagination</members>
         <name>CustomMetadata</name>
     </types>
