@@ -1,0 +1,38 @@
+<template>
+    <div class="slds-p-around_medium">
+        <lightning-layout multiple-rows="true">
+            <lightning-layout-item size="12" padding="around-small">
+                <lightning-file-upload
+                    label="Upload Sensor Data (CSV)"
+                    name="fileUploader"
+                    accept=".csv"
+                    record-id={recordId}
+                    onuploadfinished={handleUploadFinished}>
+                </lightning-file-upload>
+            </lightning-layout-item>
+
+            <lightning-layout-item size="12" padding="around-small">
+                <div class="button-container">
+                    <lightning-button 
+                        label="Download Sensor Data" 
+                        onclick={downloadCSV} 
+                        class="slds-m-bottom_medium">
+                    </lightning-button>
+
+                    <lightning-button 
+                        label="Generate Sample Data" 
+                        onclick={generateData} 
+                        class="slds-m-bottom_medium">
+                    </lightning-button>
+
+                    <lightning-button 
+                        label="Delete All Data" 
+                        onclick={deleteData} 
+                        class="slds-m-bottom_medium"
+                        variant="destructive">
+                    </lightning-button>
+                </div>
+            </lightning-layout-item>
+        </lightning-layout>
+    </div>
+</template>
